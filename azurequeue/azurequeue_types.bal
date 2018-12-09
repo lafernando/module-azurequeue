@@ -26,3 +26,21 @@ public type ListQueueResult record {
     QueueInfo[] queues;
 };
 
+public type PutMessageResult record {
+    string messageId;
+    string popReceipt;
+    string insertionTime;
+    string expirationTime;
+};
+
+public type QueueMessage record {
+    string messageId;
+    string messageText;
+    string popReceipt;
+    string insertionTime;
+    string expirationTime;
+};
+
+public type GetMessagesResult record {
+    QueueMessage[] messages;
+};

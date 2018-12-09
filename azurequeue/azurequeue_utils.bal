@@ -48,7 +48,12 @@ function generateAzureStorageDateString() returns string {
 
 function generateError(http:Response resp) returns error {
     xml errorXml = check resp.getXmlPayload();
-    error err = error(errorXml.Code.getTextValue(), { message: errorXml.Message.getTextValue() });
+    string message = errorXml.Message.getTextValue();
+    string authError = errorXml.AuthenticationErrorDetail.getTextValue();
+    if (authError != "") {
+        message = message + " AuthError: " + authError;
+    }
+    error err = error(errorXml.Code.getTextValue(), { message: message });
     return err;
 }
 
@@ -88,6 +93,7 @@ function generateAzureStorageServiceSignature(string accessKey, string canonical
                           date + "\n" + 
                           canonicalizedHeaders +   
                           canonicalizedResource;
+
     return crypto:hmac(stringToSign, accessKey, keyEncoding = crypto:BASE64, crypto:SHA256).base16ToBase64Encode();
 }
 
@@ -105,6 +111,31 @@ function decodeListQueuesXML(xml payload) returns ListQueueResult {
     return result;
 }
 
+function decodeGetMessagesXML(xml payload) returns GetMessagesResult|error {
+    QueueMessage[] messages = [];
+    int index = 0;
+    foreach var item in payload.QueueMessage {
+        if (item is xml) {
+            QueueMessage message = { messageId: item.MessageId.getTextValue(), 
+                                     messageText: item.MessageText.getTextValue(),
+                                     popReceipt: item.PopReceipt.getTextValue(),
+                                     insertionTime: item.InsertionTime.getTextValue(),
+                                     expirationTime: item.ExpirationTime.getTextValue() };
+            messages[index] = message;
+            index = index + 1;
+        }
+    }
+    GetMessagesResult result = { messages: messages };
+    return result;
+}
 
+function decodePutMessageXML(xml payload) returns PutMessageResult|error {
+    
+    PutMessageResult result = { messageId: payload.QueueMessage.MessageId.getTextValue(),
+                                popReceipt: payload.QueueMessage.PopReceipt.getTextValue(),
+                                insertionTime: payload.QueueMessage.InsertionTime.getTextValue(),
+                                expirationTime: payload.QueueMessage.ExpirationTime.getTextValue() };
+    return result;
+}
 
 
