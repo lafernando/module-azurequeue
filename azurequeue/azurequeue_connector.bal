@@ -152,7 +152,7 @@ remote function Client.putMessage(string queue, string message, int ttlSeconds =
 	
     http:Request req = new;
     populateRequestHeaders(req, headers);
-    req.setXmlPayload(xml `<QueueMessage><MessageText>{{message}}</MessageText></QueueMessage>`);
+    req.setXmlPayload(xml `<QueueMessage><MessageText>{{(untaint message)}}</MessageText></QueueMessage>`);
 
     var resp = clientEP->post("/" + untaint queue + "/messages?messagettl=" + untaint ttlSeconds, req);
 

@@ -54,7 +54,7 @@ function generateError(http:Response resp) returns error {
         message = message + " AuthError: " + authError;
     }
     error err = error(errorXml.Code.getTextValue(), { message: message });
-    return err;
+    return untaint err;
 }
 
 function populateAuthorizationHeader(string account, string accessKey, string canonicalizedResource, 
@@ -135,7 +135,7 @@ function decodePutMessageXML(xml payload) returns PutMessageResult|error {
                                 popReceipt: payload.QueueMessage.PopReceipt.getTextValue(),
                                 insertionTime: payload.QueueMessage.InsertionTime.getTextValue(),
                                 expirationTime: payload.QueueMessage.ExpirationTime.getTextValue() };
-    return result;
+    return untaint result;
 }
 
 
