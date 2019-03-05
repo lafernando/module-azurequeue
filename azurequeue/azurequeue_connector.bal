@@ -15,6 +15,7 @@
 // under the License.
 
 import ballerina/http;
+import wso2/azurecommons;
 
 # Object to initialize the connection with Azure Queue Service.
 #
@@ -70,22 +71,23 @@ public type Client client object {
 
 };
 
-remote function Client.listQueues() returns ListQueueResult|error {
+public remote function Client.listQueues() returns ListQueueResult|error {
     http:Client clientEP = new("https://" + self.account + "." + AZURE_QUEUE_SERVICE_DOMAIN);
     string verb = "GET";
-    map<string> headers = generateCommonHeaders();
+    map<string> headers = azurecommons:generateStorageCommonHeaders();
     string canonicalizedResource = "/" + check http:encode(self.account, "UTF8") + "/?comp=list";
-    populateAuthorizationHeader(self.account, self.accessKey, canonicalizedResource, verb, headers);
+    check azurecommons:populateSharedKeyLiteStorageAuthorizationHeader(self.account, self.accessKey, 
+                                                                       canonicalizedResource, verb, headers);
 
     http:Request req = new;
-    populateRequestHeaders(req, headers);
-
+    azurecommons:populateRequestHeaders(req, headers);
+  
     var resp = clientEP->get("/?comp=list", message = req);
 
     if (resp is http:Response) {
         int statusCode = resp.statusCode;
         if (statusCode != http:OK_200) {
-            return generateError(resp);
+            return azurecommons:generateStorageError(resp);
         }
         return decodeListQueuesXML(check resp.getXmlPayload());
     } else {
@@ -93,23 +95,24 @@ remote function Client.listQueues() returns ListQueueResult|error {
     }
 }
 
-remote function Client.createQueueIfNotExists(string queue) returns error? {
+public remote function Client.createQueueIfNotExists(string queue) returns error? {
     http:Client clientEP = new("https://" + self.account + "." + AZURE_QUEUE_SERVICE_DOMAIN);
     string verb = "PUT";
-    map<string> headers = generateCommonHeaders();
+    map<string> headers = azurecommons:generateStorageCommonHeaders();
     string canonicalizedResource = "/" + check http:encode(self.account, "UTF8") + "/" + 
                                          check http:encode(queue, "UTF8");
-    populateAuthorizationHeader(self.account, self.accessKey, canonicalizedResource, verb, headers);
+    check azurecommons:populateSharedKeyLiteStorageAuthorizationHeader(self.account, self.accessKey, 
+                                                                       canonicalizedResource, verb, headers);
 
     http:Request req = new;
-    populateRequestHeaders(req, headers);
+    azurecommons:populateRequestHeaders(req, headers);
 
     var resp = clientEP->put("/" + untaint queue, req);
 
     if (resp is http:Response) {
         int statusCode = resp.statusCode;
         if (statusCode != http:CREATED_201 && statusCode != http:NO_CONTENT_204) {
-            return generateError(resp);
+            return azurecommons:generateStorageError(resp);
         }
         return ();
     } else {
@@ -117,23 +120,24 @@ remote function Client.createQueueIfNotExists(string queue) returns error? {
     }
 }
 
-remote function Client.deleteQueue(string queue) returns error? {
+public remote function Client.deleteQueue(string queue) returns error? {
     http:Client clientEP = new("https://" + self.account + "." + AZURE_QUEUE_SERVICE_DOMAIN);
     string verb = "DELETE";
-    map<string> headers = generateCommonHeaders();
+    map<string> headers = azurecommons:generateStorageCommonHeaders();
     string canonicalizedResource = "/" + check http:encode(self.account, "UTF8") + "/" + 
                                          check http:encode(queue, "UTF8");
-    populateAuthorizationHeader(self.account, self.accessKey, canonicalizedResource, verb, headers);
+    check azurecommons:populateSharedKeyLiteStorageAuthorizationHeader(self.account, self.accessKey, 
+                                                                       canonicalizedResource, verb, headers);
 
     http:Request req = new;
-    populateRequestHeaders(req, headers);
+    azurecommons:populateRequestHeaders(req, headers);
 
     var resp = clientEP->delete("/" + untaint queue, req);
 
     if (resp is http:Response) {
         int statusCode = resp.statusCode;
         if (statusCode != http:NO_CONTENT_204) {
-            return generateError(resp);
+            return azurecommons:generateStorageError(resp);
         }
         return ();
     } else {
@@ -141,17 +145,19 @@ remote function Client.deleteQueue(string queue) returns error? {
     }
 }
 
-remote function Client.putMessage(string queue, string message, int ttlSeconds = -1) returns PutMessageResult|error {
+public remote function Client.putMessage(string queue, string message, 
+                                         int ttlSeconds = -1) returns PutMessageResult|error {
     http:Client clientEP = new("https://" + self.account + "." + AZURE_QUEUE_SERVICE_DOMAIN);
     string verb = "POST";
-    map<string> headers = generateCommonHeaders();
+    map<string> headers = azurecommons:generateStorageCommonHeaders();
     headers["Content-Type"] = "application/xml";
     string canonicalizedResource = "/" + check http:encode(self.account, "UTF8") + "/" + 
                                          check http:encode(queue, "UTF8") + "/messages";
-    populateAuthorizationHeader(self.account, self.accessKey, canonicalizedResource, verb, headers);
+    check azurecommons:populateSharedKeyLiteStorageAuthorizationHeader(self.account, self.accessKey, 
+                                                                       canonicalizedResource, verb, headers);
 	
     http:Request req = new;
-    populateRequestHeaders(req, headers);
+    azurecommons:populateRequestHeaders(req, headers);
     req.setXmlPayload(xml `<QueueMessage><MessageText>{{(untaint message)}}</MessageText></QueueMessage>`);
 
     var resp = clientEP->post("/" + untaint queue + "/messages?messagettl=" + untaint ttlSeconds, req);
@@ -159,7 +165,7 @@ remote function Client.putMessage(string queue, string message, int ttlSeconds =
     if (resp is http:Response) {
         int statusCode = resp.statusCode;
         if (statusCode != http:CREATED_201) {
-            return generateError(resp);
+            return azurecommons:generateStorageError(resp);
         }
         return decodePutMessageXML(check resp.getXmlPayload());
     } else {
@@ -167,17 +173,18 @@ remote function Client.putMessage(string queue, string message, int ttlSeconds =
     }
 }
 
-remote function Client.getMessages(string queue, int count = 1,
+public remote function Client.getMessages(string queue, int count = 1,
                                    int visibilityTimeoutSecs = 30) returns GetMessagesResult|error {
     http:Client clientEP = new("https://" + self.account + "." + AZURE_QUEUE_SERVICE_DOMAIN);
     string verb = "GET";
-    map<string> headers = generateCommonHeaders();
+    map<string> headers = azurecommons:generateStorageCommonHeaders();
     string canonicalizedResource = "/" + check http:encode(self.account, "UTF8") + "/" + 
                                          check http:encode(queue, "UTF8") + "/messages";
-    populateAuthorizationHeader(self.account, self.accessKey, canonicalizedResource, verb, headers);
+    check azurecommons:populateSharedKeyLiteStorageAuthorizationHeader(self.account, self.accessKey, 
+                                                                       canonicalizedResource, verb, headers);
 	
     http:Request req = new;
-    populateRequestHeaders(req, headers);
+    azurecommons:populateRequestHeaders(req, headers);
 
     var resp = clientEP->get("/" + untaint queue + "/messages?numofmessages=" + untaint count + 
                               "&visibilitytimeout=" + untaint visibilityTimeoutSecs, message = req);
@@ -185,7 +192,7 @@ remote function Client.getMessages(string queue, int count = 1,
     if (resp is http:Response) {
         int statusCode = resp.statusCode;
         if (statusCode != http:OK_200) {
-            return generateError(resp);
+            return azurecommons:generateStorageError(resp);
         }
         return decodeGetMessagesXML(check resp.getXmlPayload());
     } else {
@@ -193,16 +200,17 @@ remote function Client.getMessages(string queue, int count = 1,
     }
 }
 
-remote function Client.deleteMessage(string queue, string messageId, string popReceipt) returns error? {
+public remote function Client.deleteMessage(string queue, string messageId, string popReceipt) returns error? {
     http:Client clientEP = new("https://" + self.account + "." + AZURE_QUEUE_SERVICE_DOMAIN);
     string verb = "DELETE";
-    map<string> headers = generateCommonHeaders();
+    map<string> headers = azurecommons:generateStorageCommonHeaders();
     string canonicalizedResource = "/" + check http:encode(self.account, "UTF8") + "/" + 
                                          check http:encode(queue, "UTF8") + "/messages/" + messageId;
-    populateAuthorizationHeader(self.account, self.accessKey, canonicalizedResource, verb, headers);
+    check azurecommons:populateSharedKeyLiteStorageAuthorizationHeader(self.account, self.accessKey, 
+                                                                       canonicalizedResource, verb, headers);
 
     http:Request req = new;
-    populateRequestHeaders(req, headers);
+    azurecommons:populateRequestHeaders(req, headers);
 
     var resp = clientEP->delete("/" + untaint queue + "/messages/" + untaint messageId + 
                                 "?popreceipt=" + untaint popReceipt, req);
@@ -210,7 +218,7 @@ remote function Client.deleteMessage(string queue, string messageId, string popR
     if (resp is http:Response) {
         int statusCode = resp.statusCode;
         if (statusCode != http:NO_CONTENT_204) {
-            return generateError(resp);
+            return azurecommons:generateStorageError(resp);
         }
         return ();
     } else {
