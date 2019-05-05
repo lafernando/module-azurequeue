@@ -5,7 +5,7 @@ Connects to Azure Queue service through Ballerina.
 ## Compatibility
 | Ballerina Language Version 
 | -------------------------- 
-| 0.993.0                    
+| 0.991.0                    
 
 ## Sample
 
@@ -21,13 +21,13 @@ azurequeue:Configuration config = {
 
 azurequeue:Client queueClient = new(config);
 
-public function main(string... args) {
-    _ = queueClient->createQueueIfNotExists("queue1");
-    _ = queueClient->putMessage("queue1", "MSG1");
+public function main(string... args) returns error? {
+    check queueClient->createQueueIfNotExists("queue1");
+    check queueClient->putMessage("queue1", "MSG1");
     var result = queueClient->getMessages("queue1");
     if (result is azurequeue:GetMessagesResult) {
         io:println(result);
-        _ = queueClient->deleteMessage("queue1", result.messages[0].messageId, result.messages[0].popReceipt);
+        check queueClient->deleteMessage("queue1", result.messages[0].messageId, result.messages[0].popReceipt);
     }
 }
 ```
